@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Honeypot: Live Status & CSV</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Dark blue-gray background */
+            color: #e2e8f0; /* Light gray text */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Full viewport height */
+            margin: 0;
+            padding: 2rem 0; /* Add some vertical padding */
+        }
+        .container {
+            max-width: 900px; /* Slightly wider to accommodate CSV display */
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%; /* Ensure it takes full width within max-width */
+        }
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #6366f1; /* Indigo */
+            margin-bottom: 1.5rem;
+            border-bottom: 3px solid #4f46e5; /* Darker indigo border */
+            padding-bottom: 0.5rem;
+            text-align: center; /* Center the title */
+        }
+        .card {
+            background-color: #1e293b; /* Darker blue-gray for cards */
+            border-radius: 0.75rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+        .text-highlight {
+            color: #a78bfa; /* Light purple for highlights */
+        }
+        .button-primary {
+            background-color: #6366f1;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease-in-out;
+            cursor: pointer; /* Indicate it's clickable */
+        }
+        .button-primary:hover {
+            background-color: #4f46e5;
+        }
+        .log-entry {
+            background-color: #334155; /* Slate-700 */
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.9rem;
+            color: #cbd5e1; /* Slate-300 */
+        }
+        .csv-display {
+            background-color: #0f172a; /* Darker background for code/data */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            white-space: pre-wrap; /* Preserve whitespace and wrap lines */
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #475569; /* Slate-600 border */
+        }
+        .warning-box {
+            background-color: #ef444420; /* Red with transparency */
+            border: 1px solid #ef4444; /* Red border */
+            color: #fca5a5; /* Light red text */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container">
+        <!-- Live Honeypot Status and Logs -->
+        <section id="live-status" class="card">
+            <h2 class="section-title">AI-Honeypot Live Status</h2>
+            <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+                <div class="flex items-center space-x-2">
+                    <span id="status-indicator" class="w-5 h-5 rounded-full bg-red-500 animate-pulse"></span>
+                    <span id="status-text" class="text-xl font-medium text-red-400">Honeypot Inactive</span>
+                </div>
+                <button id="toggle-honeypot" class="button-primary">Start Honeypot</button>
+            </div>
+
+            <h3 class="text-2xl font-semibold text-gray-200 mb-4 text-center">Connection Logs (Simulated):</h3>
+            <div id="connection-logs" class="bg-gray-800 p-4 rounded-lg h-96 overflow-y-auto mb-6">
+                <!-- Log entries will be added here by JavaScript -->
+                <div class="log-entry text-gray-500">Click "Start Honeypot" to begin simulating connections.</div>
+            </div>
+
+
+        </section>
+
+        <!-- Display connections.csv content -->
+        <section id="csv-content-display" class="card">
+            <h2 class="section-title">connections.csv Content</h2>
+
+            <div class="flex justify-center mb-4">
+                <button id="load-csv-button" class="button-primary">Load connections.csv</button>
+            </div>
+            <pre id="csv-data-display" class="csv-display">
+Click "Load connections.csv" to view saved logs.
+            </pre>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-8 text-gray-500 text-sm">
+            &copy; 2025 AI-HONEYPOT Project.
+        </footer>
+    </div>
+
+    <script>
+        // JavaScript for conceptual honeypot status and log simulation
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const toggleButton = document.getElementById('toggle-honeypot');
+        const connectionLogs = document.getElementById('connection-logs');
+        const loadCsvButton = document.getElementById('load-csv-button');
+        const csvDataDisplay = document.getElementById('csv-data-display');
+
+        let isHoneypotActive = false;
+        let logInterval;
+
+        // Function to simulate a new log entry and conceptually send to backend
+        async function simulateLogEntry() {
+            const timestamp = new Date().toISOString(); // Use ISO string for consistent format
+            const ip = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+            const port = Math.floor(Math.random() * (65535 - 1024) + 1024);
+            const dataLength = Math.floor(Math.random() * 1000) + 50; // Data length between 50 and 1050
+            const isMalicious = dataLength > 500; // Simple rule for "malicious"
+            const detectionStatus = isMalicious ? "MALICIOUS" : "BENIGN";
+            const detectionColor = isMalicious ? "text-red-400" : "text-green-400";
+
+            let attackType = '';
+            if (isMalicious) {
+                const attackTypes = ["Port Scan", "Brute Force Attempt", "SQL Injection", "Malware Download Attempt", "DDoS Attack", "XSS Attempt"];
+                attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+            }
+
+            // Construct the log data object to be sent to backend
+            const logData = {
+                timestamp: timestamp,
+                ip: ip,
+                port: port,
+                dataLength: dataLength,
+                isMalicious: isMalicious,
+                attackType: attackType,
+                detectionStatus: detectionStatus
+            };
+
+            // Display log in the UI
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry flex flex-col sm:flex-row justify-between items-start sm:items-center`;
+            logDiv.innerHTML = `
+                <span class="mb-1 sm:mb-0">
+                    [${new Date().toLocaleString()}] Connection from <span class="text-blue-300">${ip}:${port}</span> - Data Length: ${dataLength}
+                </span>
+                <span class="flex flex-col sm:flex-row items-start sm:items-center">
+                    ${isMalicious ? `<span class="text-yellow-300 mr-2">Attack Type: ${attackType}</span>` : ''}
+                    <span class="${detectionColor} font-bold">${detectionStatus}</span>
+                </span>
+            `;
+            connectionLogs.prepend(logDiv); // Add to top
+
+            // Keep only the last 50 logs to prevent performance issues
+            if (connectionLogs.children.length > 50) {
+                connectionLogs.removeChild(connectionLogs.lastChild);
+            }
+
+            // --- Conceptual Backend Interaction for SAVING data ---
+            // This part requires a running backend server to actually save the data.
+            // Example: Sending data to a Flask/FastAPI endpoint.
+            try {
+                const response = await fetch('/log_connection', { // Replace with your actual backend endpoint
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(logData),
+                });
+
+                if (response.ok) {
+                    console.log('Log data sent to backend successfully!');
+                    // Optionally, refresh CSV display after successful save
+                    // loadCsvContent();
+                } else {
+                    console.error('Failed to send log data to backend:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error sending log data to backend:', error);
+            }
+            // --- End Conceptual Backend Interaction ---
+        }
+
+        // Function to load and display connections.csv content
+        async function loadCsvContent() {
+            csvDataDisplay.textContent = 'Loading connections.csv...';
+            try {
+                // This assumes your connections.csv is served directly by a web server
+                // For example, if you run `python -m http.server` in the directory
+                // containing connections.csv, it will be available at /connections.csv
+                const response = await fetch('/connections.csv');
+                if (response.ok) {
+                    const csvText = await response.text();
+                    csvDataDisplay.textContent = csvText;
+                } else {
+                    csvDataDisplay.textContent = `Failed to load connections.csv content. Status: ${response.status} ${response.statusText}. Please ensure your backend server is running and serving this file.`;
+                    console.error('Failed to load connections.csv:', response.statusText);
+                }
+            } catch (error) {
+                csvDataDisplay.textContent = `Failed to load connections.csv content. Network error: ${error.message}. Please ensure your backend server is running and serving this file.`;
+                console.error('Error fetching connections.csv:', error);
+            }
+        }
+
+        // Toggle honeypot status
+        toggleButton.addEventListener('click', () => {
+            isHoneypotActive = !isHoneypotActive;
+            if (isHoneypotActive) {
+                statusIndicator.classList.remove('bg-red-500');
+                statusIndicator.classList.add('bg-green-500', 'animate-pulse');
+                statusText.classList.remove('text-red-400');
+                statusText.classList.add('text-green-400');
+                statusText.textContent = 'Honeypot Active';
+                toggleButton.textContent = 'Stop Honeypot';
+                connectionLogs.innerHTML = ''; // Clear previous logs when starting
+                logInterval = setInterval(simulateLogEntry, 1500); // Simulate logs every 1.5 seconds
+            } else {
+                statusIndicator.classList.remove('bg-green-500', 'animate-pulse');
+                statusIndicator.classList.add('bg-red-500');
+                statusText.classList.remove('text-green-400');
+                statusText.classList.add('text-red-400');
+                statusText.textContent = 'Honeypot Inactive';
+                toggleButton.textContent = 'Start Honeypot';
+                clearInterval(logInterval); // Stop simulating logs
+                connectionLogs.innerHTML = '<div class="log-entry text-gray-500">Honeypot stopped. Click "Start Honeypot" to resume.</div>';
+            }
+        });
+
+        // Event listener for loading CSV content
+        loadCsvButton.addEventListener('click', loadCsvContent);
+
+        // Initial messages when the page loads
+        connectionLogs.innerHTML = '<div class="log-entry text-gray-500">Click "Start Honeypot" to begin simulating connections.</div>';
+        csvDataDisplay.textContent = 'Click "Load connections.csv" to view its content. (Ensure your backend server is serving this file!)';
+    </script>
+</body>
+</html>
+    
